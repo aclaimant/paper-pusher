@@ -5,7 +5,7 @@
             :url "http://www.gnu.org/licenses/agpl-3.0.html"}
   :dependencies [[com.itextpdf/itextpdf "5.5.9"]
                  [com.outpace/config "0.9.0"]
-                 [compojure "1.1.8"]
+                 [compojure "1.5.0"]
                  [fogus/ring-edn "0.3.0"]
                  [org.clojure/clojure "1.8.0"]
                  [ring "1.2.1"]]

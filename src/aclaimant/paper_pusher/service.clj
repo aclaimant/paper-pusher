@@ -1,6 +1,6 @@
 (ns aclaimant.paper-pusher.service
   (:require
-    [compojure.core :refer [defroutes GET POST]]
+    [compojure.core :refer [defroutes ANY GET POST wrap-routes]]
     [outpace.config :refer [defconfig!]]
     [ring.middleware.edn :as edn-mw]
     [ring.middleware.keyword-params :as keyword-params]
@@ -9,6 +9,8 @@
     [com.itextpdf.text.pdf PdfReader PdfStamper]
     [java.io ByteArrayOutputStream ByteArrayInputStream]
     [org.apache.commons.io IOUtils]))
+
+(defonce ^:private start-time (atom nil))
 
 (defconfig! api-key)
 
@@ -27,7 +29,12 @@
       (.close out)
       (ByteArrayInputStream. data))))
 
-(defroutes service-routes
+(defroutes public-routes
+  (GET "/paper-pusher/status" []
+    {:status 200
+     :body (format "Been pushing papers since for %dms" (- (System/currentTimeMillis) @start-time))}))
+
+(defroutes protected-routes
   (POST "/paper-pusher/push" {params :params}
     {:status 200
      :headers {"Content-Type" "application/pdf"}
@@ -51,13 +58,20 @@
         {:status 500
          :body "An error has occurred."}))))
 
+(defroutes service-routes
+  public-routes
+  (wrap-routes protected-routes wrap-api-key)
+  (ANY "*" []
+    {:status 404}))
+
 (def app
   (-> #'service-routes
-      wrap-api-key
+      ;wrap-api-key
       edn-mw/wrap-edn-params
       keyword-params/wrap-keyword-params
       params/wrap-params
       wrap-errors))
 
 (defn main []
-  (println "Initialized paper-pusher"))
+  (println "Initialized paper-pusher")
+  (reset! start-time (System/currentTimeMillis)))
