@@ -30,6 +30,7 @@
 (defroutes service-routes
   (POST "/paper-pusher/push" {params :params}
     {:status 200
+     :headers {"Content-Type" "application/pdf"}
      :body (with-field-values (:pdf-url params) (:values params))}))
 
 (defn ^:private wrap-api-key [handler]
