@@ -18,6 +18,5 @@
   :uberjar-name "paper-pusher-standalone.jar"
   :min-lein-version "2.0.0"
   :profiles {:dev {:jvm-opts ["-Dconfig.edn=config.edn"]}
-             :staging {:jvm-opts ["-Dconfig.edn=staging-config.edn"]}
-             :production {:jvm-opts ["-Dconfig.edn=production-config.edn"]}
+             :production {:jvm-opts ["-Dconfig.edn=config.edn"]}
              :uberjar {:aot :all}})
