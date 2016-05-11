@@ -1,2 +1,1 @@
-{aclaimant.paper-pusher.service/api-key #config/env "PP_API_KEY"
- }
+{aclaimant.paper-pusher.service/api-key #config/env "PP_API_KEY"}

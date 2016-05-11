@@ -29,10 +29,8 @@
 
 (defroutes service-routes
   (POST "/paper-pusher/push" {params :params}
-    (println (pr-str params))
     {:status 200
-     :body (with-field-values (:pdf-url params) (:values params))}
-    ))
+     :body (with-field-values (:pdf-url params) (:values params))}))
 
 (defn ^:private wrap-api-key [handler]
   (fn [req]
@@ -42,12 +40,23 @@
         (= request-key api-key) (handler req)
         :else {:status 403}))))
 
+(defn ^:private wrap-errors [handler]
+  (fn [e]
+    (try
+      (handler e)
+      (catch Throwable ex
+        (println "An error has occurred" (.getMessage ex))
+        (.printStackTrace ex)
+        {:status 500
+         :body "An error has occurred."}))))
+
 (def app
   (-> #'service-routes
       wrap-api-key
       edn-mw/wrap-edn-params
       keyword-params/wrap-keyword-params
-      params/wrap-params))
+      params/wrap-params
+      wrap-errors))
 
 (defn main []
   (println "Initialized paper-pusher"))
