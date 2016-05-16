@@ -20,7 +20,7 @@
         stamper (PdfStamper. reader out)
         fields (.getAcroFields stamper)]
     (doseq [[field-name field-value] values]
-      (.setField fields (name field-name) field-value))
+      (.setField fields (name field-name) (str field-value)))
     (.setFormFlattening stamper true)
     ; TODO: Use with-open to auto-close
     (.close stamper)
