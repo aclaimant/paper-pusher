@@ -14,6 +14,23 @@
 
 (defconfig! api-key)
 
+(comment
+  (defn ^:private field-preview [pdf-url]
+    (let [reader (PdfReader. pdf-url)
+          out (ByteArrayOutputStream.)
+          stamper (PdfStamper. reader out)
+          fields (.getAcroFields stamper)
+          field-names (mapv key (.getFields fields))]
+      (doseq [field-name field-names]
+        (.setField fields field-name field-name))
+      (.setFormFlattening stamper true)
+      ; TODO: Use with-open to auto-close
+      (.close stamper)
+      (.close reader)
+      (let [data (.toByteArray out)]
+        (.close out)
+        (ByteArrayInputStream. data)))))
+
 (defn ^:private with-field-values [pdf-url values]
   (let [reader (PdfReader. pdf-url)
         out (ByteArrayOutputStream.)
@@ -78,5 +95,6 @@
       wrap-errors))
 
 (defn main []
+  (set! (. PdfReader unethicalreading) true)
   (println "Initialized paper-pusher")
   (reset! start-time (System/currentTimeMillis)))
