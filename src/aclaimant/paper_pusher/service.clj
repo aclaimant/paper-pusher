@@ -34,11 +34,16 @@
     {:status 200
      :body (format "Been pushing papers since for %dms" (- (System/currentTimeMillis) @start-time))}))
 
+(defn ^:private pdf-url [{:keys [pdf-url request-key]}]
+  (if request-key
+    (str pdf-url "?key=" request-key)
+    pdf-url))
+
 (defroutes protected-routes
   (POST "/paper-pusher/push" {params :params}
     {:status 200
      :headers {"Content-Type" "application/pdf"}
-     :body (with-field-values (:pdf-url params) (:values params))}))
+     :body (with-field-values (pdf-url params) (:values params))}))
 
 (defn ^:private wrap-api-key [handler]
   (fn [req]
