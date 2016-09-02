@@ -14,41 +14,39 @@
 
 (defconfig! api-key)
 
+(defn ^:private make-reader [url]
+  (PdfReader. url))
+
+(defn ^:private make-stamper [reader out]
+  (PdfStamper. reader out))
+
+(defn ^:private get-fields [stamper]
+  (mapv key (.getFields (.getAcroFields stamper))))
+
+(defn ^:private set-fields [stamper values]
+  (let [fields (.getAcroFields stamper)]
+    (doseq [[field-name field-value] values]
+      (.setField fields (name field-name) (str field-value)))))
+
 (defn ^:private preview-fields [pdf-url]
-  (let [reader (PdfReader. pdf-url)
-        out (ByteArrayOutputStream.)
-        stamper (PdfStamper. reader out)
-        fields (.getAcroFields stamper)
-        field-names (mapv key (.getFields fields))]
-    (doseq [field-name field-names]
-      (.setField fields field-name field-name))
-    (.setFormFlattening stamper true)
-    ; TODO: Use with-open to auto-close
-    (.close stamper)
-    (.close reader)
-    (let [data (.toByteArray out)]
-      (.close out)
-      (ByteArrayInputStream. data))))
+  (with-open [out (ByteArrayOutputStream.)]
+    (with-open [reader (make-reader pdf-url)
+                stamper (make-stamper reader out)]
+      (let [fields (get-fields stamper)]
+        (set-fields stamper (zipmap fields fields))))
+    (ByteArrayInputStream. (.toByteArray out))))
 
 (defn ^:private with-field-values [pdf-url values]
-  (let [reader (PdfReader. pdf-url)
-        out (ByteArrayOutputStream.)
-        stamper (PdfStamper. reader out)
-        fields (.getAcroFields stamper)]
-    (doseq [[field-name field-value] values]
-      (.setField fields (name field-name) (str field-value)))
-    (.setFormFlattening stamper true)
-    ; TODO: Use with-open to auto-close
-    (.close stamper)
-    (.close reader)
-    (let [data (.toByteArray out)]
-      (.close out)
-      (ByteArrayInputStream. data))))
+  (with-open [out (ByteArrayOutputStream.)]
+    (with-open [reader (make-reader pdf-url)
+                stamper (make-stamper reader out)]
+      (set-fields stamper values))
+    (ByteArrayInputStream. (.toByteArray out))))
 
 (defroutes public-routes
   (GET "/paper-pusher/status" []
     {:status 200
-     :body (format "Been pushing papers since for %dms" (- (System/currentTimeMillis) @start-time))}))
+     :body (format "Been pushing papers for %dms" (- (System/currentTimeMillis) @start-time))}))
 
 (defn ^:private pdf-url [{:keys [pdf-url request-key]}]
   (if request-key
@@ -62,8 +60,6 @@
      :body (with-field-values (pdf-url params) (:values params))})
   (POST "/paper-pusher/preview" {params :params}
     (let [pdf-url (pdf-url params)]
-      (println "WTF:" (pr-str pdf-url))
-
       {:status 200
        :headers {"Content-Type" "application/pdf"}
        :body (preview-fields pdf-url)})))
