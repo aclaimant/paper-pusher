@@ -14,22 +14,21 @@
 
 (defconfig! api-key)
 
-(comment
-  (defn ^:private field-preview [pdf-url]
-    (let [reader (PdfReader. pdf-url)
-          out (ByteArrayOutputStream.)
-          stamper (PdfStamper. reader out)
-          fields (.getAcroFields stamper)
-          field-names (mapv key (.getFields fields))]
-      (doseq [field-name field-names]
-        (.setField fields field-name field-name))
-      (.setFormFlattening stamper true)
-      ; TODO: Use with-open to auto-close
-      (.close stamper)
-      (.close reader)
-      (let [data (.toByteArray out)]
-        (.close out)
-        (ByteArrayInputStream. data)))))
+(defn ^:private preview-fields [pdf-url]
+  (let [reader (PdfReader. pdf-url)
+        out (ByteArrayOutputStream.)
+        stamper (PdfStamper. reader out)
+        fields (.getAcroFields stamper)
+        field-names (mapv key (.getFields fields))]
+    (doseq [field-name field-names]
+      (.setField fields field-name field-name))
+    (.setFormFlattening stamper true)
+    ; TODO: Use with-open to auto-close
+    (.close stamper)
+    (.close reader)
+    (let [data (.toByteArray out)]
+      (.close out)
+      (ByteArrayInputStream. data))))
 
 (defn ^:private with-field-values [pdf-url values]
   (let [reader (PdfReader. pdf-url)
@@ -60,7 +59,14 @@
   (POST "/paper-pusher/push" {params :params}
     {:status 200
      :headers {"Content-Type" "application/pdf"}
-     :body (with-field-values (pdf-url params) (:values params))}))
+     :body (with-field-values (pdf-url params) (:values params))})
+  (POST "/paper-pusher/preview" {params :params}
+    (let [pdf-url (pdf-url params)]
+      (println "WTF:" (pr-str pdf-url))
+
+      {:status 200
+       :headers {"Content-Type" "application/pdf"}
+       :body (preview-fields pdf-url)})))
 
 (defn ^:private wrap-api-key [handler]
   (fn [req]
