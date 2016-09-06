@@ -6,7 +6,8 @@
     [ring.middleware.keyword-params :as keyword-params]
     [ring.middleware.params :as params])
   (:import
-    [com.itextpdf.text.pdf PdfReader PdfStamper]
+    [com.itextpdf.text.pdf PdfReader PdfStamper PdfContentByte ColumnText PdfString PdfName PdfAnnotation PdfContentByte]
+    [com.itextpdf.text Paragraph Rectangle Element Phrase BaseColor]
     [java.io ByteArrayOutputStream ByteArrayInputStream]
     [org.apache.commons.io IOUtils]))
 
@@ -28,19 +29,36 @@
     (doseq [[field-name field-value] values]
       (.setField fields (name field-name) (str field-value)))))
 
+(defn ^:private annotate [stamper field-name cb]
+  (let [field-rect (Rectangle. (.-position (first (.getFieldPositions (.getAcroFields stamper) field-name))))
+        annotation (PdfAnnotation/createText
+                     (.getWriter stamper)
+                     field-rect
+                     (str "Title: " field-name)
+                     field-name
+                     false
+                     "Help")]
+    (.setColorFill cb BaseColor/BLUE)
+    (.addAnnotation stamper annotation 1)
+    (ColumnText/showTextAligned cb Element/ALIGN_LEFT
+                                (Phrase. field-name)
+                                (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0)))
+
 (defn ^:private preview-fields [pdf-url]
   (with-open [out (ByteArrayOutputStream.)]
     (with-open [reader (make-reader pdf-url)
                 stamper (make-stamper reader out)]
-      (let [fields (get-fields stamper)]
-        (set-fields stamper (zipmap fields fields))))
+      (let [canvas (.getOverContent stamper 1)]
+        (doseq [f (get-fields stamper)]
+          (annotate stamper f canvas))))
     (ByteArrayInputStream. (.toByteArray out))))
 
 (defn ^:private with-field-values [pdf-url values]
   (with-open [out (ByteArrayOutputStream.)]
     (with-open [reader (make-reader pdf-url)
                 stamper (make-stamper reader out)]
-      (set-fields stamper values))
+      (set-fields stamper values)
+      (.setFormFlattening stamper true))
     (ByteArrayInputStream. (.toByteArray out))))
 
 (defroutes public-routes
