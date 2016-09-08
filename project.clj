@@ -1,4 +1,4 @@
-(defproject com.aclaimant/paper-pusher "1.3.0"
+(defproject com.aclaimant/paper-pusher "1.3.1-SNAPSHOT"
   :description "Fill fillable PDFs."
   :url "https://github.com/aclaimant/paper-pusher"
   :license {:name "AGPL"
