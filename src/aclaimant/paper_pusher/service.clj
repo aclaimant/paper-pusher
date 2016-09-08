@@ -44,6 +44,12 @@
                                 (Phrase. field-name)
                                 (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0)))
 
+(defn ^:private form-fields [pdf-url]
+  (with-open [out (ByteArrayOutputStream.)
+              reader (make-reader pdf-url)
+              stamper (make-stamper reader out)]
+    (get-fields stamper)))
+
 (defn ^:private preview-fields [pdf-url]
   (with-open [out (ByteArrayOutputStream.)]
     (with-open [reader (make-reader pdf-url)
@@ -80,7 +86,12 @@
     (let [pdf-url (pdf-url params)]
       {:status 200
        :headers {"Content-Type" "application/pdf"}
-       :body (preview-fields pdf-url)})))
+       :body (preview-fields pdf-url)}))
+  (POST "/paper-pusher/form-fields" {params :params}
+    (let [pdf-url (pdf-url params)]
+      {:status 200
+       :headers {"Content-Type" "application/edn"}
+       :body (pr-str (form-fields pdf-url))})))
 
 (defn ^:private wrap-api-key [handler]
   (fn [req]
