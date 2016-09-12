@@ -1,12 +1,13 @@
 (ns aclaimant.paper-pusher.service
   (:require
+    [clojure.string :as string]
     [compojure.core :refer [defroutes ANY GET POST wrap-routes]]
     [outpace.config :refer [defconfig!]]
     [ring.middleware.edn :as edn-mw]
     [ring.middleware.keyword-params :as keyword-params]
     [ring.middleware.params :as params])
   (:import
-    [com.itextpdf.text.pdf PdfReader PdfStamper PdfContentByte ColumnText PdfString PdfName PdfAnnotation PdfContentByte]
+    [com.itextpdf.text.pdf AcroFields PdfReader PdfStamper PdfContentByte ColumnText PdfString PdfName PdfAnnotation PdfContentByte]
     [com.itextpdf.text Paragraph Rectangle Element Phrase BaseColor]
     [java.io ByteArrayOutputStream ByteArrayInputStream]
     [org.apache.commons.io IOUtils]))
@@ -30,18 +31,26 @@
       (.setField fields (name field-name) (str field-value)))))
 
 (defn ^:private annotate [stamper field-name cb]
-  (let [field-rect (Rectangle. (.-position (first (.getFieldPositions (.getAcroFields stamper) field-name))))
+  (let [acro-fields (.getAcroFields stamper)
+        field-rect (Rectangle. (.-position (first (.getFieldPositions acro-fields field-name))))
+        checkbox? (= AcroFields/FIELD_TYPE_CHECKBOX (.getFieldType acro-fields field-name))
+        options (when checkbox? (mapv #(.toString %) (.getAppearanceStates acro-fields field-name)))
+        field-title (if checkbox? (str "Checkbox: " field-name) field-name)
         annotation (PdfAnnotation/createText
                      (.getWriter stamper)
                      field-rect
-                     (str "Title: " field-name)
-                     field-name
+                     field-title
+                     (if checkbox?
+                       (format "Name: %s\nValues: %s"
+                               field-name
+                               (string/join ", " options))
+                       field-name)
                      false
                      "Help")]
     (.setColorFill cb BaseColor/BLUE)
     (.addAnnotation stamper annotation 1)
     (ColumnText/showTextAligned cb Element/ALIGN_LEFT
-                                (Phrase. field-name)
+                                (Phrase. field-title)
                                 (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0)))
 
 (defn ^:private form-fields [pdf-url]
