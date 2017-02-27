@@ -59,14 +59,20 @@
                                 (Phrase. field-title)
                                 (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0)))
 
+(def ^:private colors
+  {:transparent (BaseColor. 1.0 1.0 1.0 0.0)})
 
 (defn ^:private set-fields [stamper values]
   (let [fields (.getAcroFields stamper)
         cb (.getOverContent stamper 1)]
-    (doseq [[field-name field-value] values]
-      (if (= (str field-value) "[sig|req|signer0]")
-        (annotate stamper (name field-name) (str field-value) cb (BaseColor. 1.0 1.0 1.0 0.0))
-        (.setField fields (name field-name) (str field-value))))))
+    (doseq [[field-name field-value-or-map] values
+            :let [{:keys [value color]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
+                  field-name (name field-name)
+                  field-value (str value)
+                  color (when color (colors color))]]
+      (if color
+        (show-text stamper field-name field-value cb color)
+        (.setField fields field-name field-value)))))
 
 (defn ^:private form-fields [pdf-url]
   (with-open [out (ByteArrayOutputStream.)
