@@ -25,32 +25,40 @@
 (defn ^:private get-fields [stamper]
   (mapv key (.getFields (.getAcroFields stamper))))
 
-(defn ^:private annotate
-  ([stamper field-name cb]
-   (annotate stamper field-name field-name cb BaseColor/BLUE))
-  ([stamper field-name field-value cb color]
-   (let [acro-fields (.getAcroFields stamper)
-         field-rect (Rectangle. (.-position (first (.getFieldPositions acro-fields field-name))))
-         checkbox? (= AcroFields/FIELD_TYPE_CHECKBOX (.getFieldType acro-fields field-name))
-         options (when checkbox? (mapv #(.toString %) (.getAppearanceStates acro-fields field-name)))
-         field-title (if checkbox? (str "Checkbox: " field-value) field-value)
-         annotation (PdfAnnotation/createText
-                      (.getWriter stamper)
-                      field-rect
-                      field-value
-                      (if checkbox?
-                        (format "Name: %s\nValues: %s"
-                                field-name
-                                (string/join ", " options))
-                        field-name)
-                      false
-                      "Help")]
-     (.setColorFill cb color)
-     (when (= color BaseColor/BLUE)
-       (.addAnnotation stamper annotation 1))
-     (ColumnText/showTextAligned cb Element/ALIGN_LEFT
-                                 (Phrase. field-value)
-                                 (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0))))
+(defn ^:private checkbox? [{field-type :type}]
+  (= AcroFields/FIELD_TYPE_CHECKBOX field-type))
+
+(defn ^:private get-field-info [stamper field-name]
+  (let [acro-fields (.getAcroFields stamper)
+        field-rect (Rectangle. (.-position (first (.getFieldPositions acro-fields field-name))))]
+    {:field-rect field-rect
+     :type (.getFieldType acro-fields field-name)
+     :options (mapv #(.toString %) (.getAppearanceStates acro-fields field-name))}))
+
+(defn ^:private annotate [stamper field-name field-value]
+  (let [{:keys [field-rect options] :as field-info} (get-field-info stamper field-name)
+        annotation (PdfAnnotation/createText
+                     (.getWriter stamper)
+                     field-rect
+                     field-value
+                     (if (checkbox? field-info)
+                       (format "Name: %s\nValues: %s"
+                               field-name
+                               (string/join ", " options))
+                       field-name)
+                     false
+                     "Help")]
+    (.addAnnotation stamper annotation 1)))
+
+(defn ^:private show-text
+  [stamper field-name field-value cb color]
+  (let [{:keys [field-rect options] :as field-info} (get-field-info stamper field-name)
+        field-title (if (checkbox? field-info) (str "Checkbox: " field-value) field-value)]
+    (.setColorFill cb color)
+    (ColumnText/showTextAligned cb Element/ALIGN_LEFT
+                                (Phrase. field-title)
+                                (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0)))
+
 
 (defn ^:private set-fields [stamper values]
   (let [fields (.getAcroFields stamper)
@@ -71,8 +79,9 @@
     (with-open [reader (make-reader pdf-url)
                 stamper (make-stamper reader out)]
       (let [canvas (.getOverContent stamper 1)]
-        (doseq [f (get-fields stamper)]
-          (annotate stamper f canvas))))
+        (doseq [field-name (get-fields stamper)]
+          (annotate stamper field-name field-name)
+          (show-text stamper field-name field-name canvas BaseColor/BLUE))))
     (ByteArrayInputStream. (.toByteArray out))))
 
 (defn ^:private with-field-values [pdf-url values]
