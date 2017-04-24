@@ -30,13 +30,15 @@
 
 (defn ^:private get-field-info [stamper field-name]
   (let [acro-fields (.getAcroFields stamper)
-        field-rect (Rectangle. (.-position (first (.getFieldPositions acro-fields field-name))))]
+        field-position (first (.getFieldPositions acro-fields field-name))
+        field-rect (Rectangle. (.-position field-position))]
     {:field-rect field-rect
+     :page (.-page field-position)
      :type (.getFieldType acro-fields field-name)
      :options (mapv #(.toString %) (.getAppearanceStates acro-fields field-name))}))
 
 (defn ^:private annotate [stamper field-name field-value]
-  (let [{:keys [field-rect options] :as field-info} (get-field-info stamper field-name)
+  (let [{:keys [field-rect options page] :as field-info} (get-field-info stamper field-name)
         annotation (PdfAnnotation/createText
                      (.getWriter stamper)
                      field-rect
@@ -48,11 +50,12 @@
                        field-name)
                      false
                      "Help")]
-    (.addAnnotation stamper annotation 1)))
+    (.addAnnotation stamper annotation page)))
 
 (defn ^:private show-text
-  [stamper field-name field-value cb color]
-  (let [{:keys [field-rect options] :as field-info} (get-field-info stamper field-name)
+  [stamper field-name field-value color]
+  (let [{:keys [field-rect options page] :as field-info} (get-field-info stamper field-name)
+        cb (.getOverContent stamper page)
         field-title (if (checkbox? field-info) (str "Checkbox: " field-value) field-value)]
     (.setColorFill cb color)
     (ColumnText/showTextAligned cb Element/ALIGN_LEFT
@@ -71,7 +74,7 @@
                   field-value (str value)
                   color (when color (colors color))]]
       (if color
-        (show-text stamper field-name field-value cb color)
+        (show-text stamper field-name field-value color)
         (.setField fields field-name field-value)))))
 
 (defn ^:private form-fields [pdf-url]
@@ -84,10 +87,9 @@
   (with-open [out (ByteArrayOutputStream.)]
     (with-open [reader (make-reader pdf-url)
                 stamper (make-stamper reader out)]
-      (let [canvas (.getOverContent stamper 1)]
-        (doseq [field-name (get-fields stamper)]
-          (annotate stamper field-name field-name)
-          (show-text stamper field-name field-name canvas BaseColor/BLUE))))
+      (doseq [field-name (get-fields stamper)]
+        (annotate stamper field-name field-name)
+        (show-text stamper field-name field-name BaseColor/BLUE)))
     (ByteArrayInputStream. (.toByteArray out))))
 
 (defn ^:private with-field-values [pdf-url values]
