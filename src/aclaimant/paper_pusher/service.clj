@@ -54,7 +54,7 @@
 
 (defn ^:private show-text
   [stamper field-name field-value color]
-  (let [{:keys [field-rect options page] :as field-info} (get-field-info stamper field-name)
+  (let [{:keys [field-rect page] :as field-info} (get-field-info stamper field-name)
         cb (.getOverContent stamper page)
         field-title (if (checkbox? field-info) (str "Checkbox: " field-value) field-value)]
     (.setColorFill cb color)
@@ -66,9 +66,9 @@
   {:transparent (BaseColor. 1.0 1.0 1.0 0.0)})
 
 (defn ^:private set-fields [stamper values]
-  (let [fields (.getAcroFields stamper)
-        cb (.getOverContent stamper 1)]
+  (let [fields (.getAcroFields stamper)]
     (doseq [[field-name field-value-or-map] values
+            :when (get (.getFields fields) field-name)
             :let [{:keys [value color]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
                   field-name (name field-name)
                   field-value (str value)
