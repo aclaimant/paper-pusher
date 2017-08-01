@@ -68,7 +68,7 @@
 (defn ^:private set-fields [stamper values]
   (let [fields (.getAcroFields stamper)]
     (doseq [[field-name field-value-or-map] values
-            :when (get (.getFields fields) field-name)
+            :when (get (.getFields fields) (name field-name))
             :let [{:keys [value color]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
                   field-name (name field-name)
                   field-value (str value)
