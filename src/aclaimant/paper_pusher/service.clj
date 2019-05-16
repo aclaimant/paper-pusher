@@ -67,7 +67,7 @@
 
 (defn ^:private set-fields [stamper values]
   (let [fields (.getAcroFields stamper)
-        base-font (BaseFont/createFont "resources/Arial Unicode.ttf" BaseFont/IDENTITY_H BaseFont/EMBEDDED)]
+        base-font (BaseFont/createFont "resources/DejaVuSans.ttf" BaseFont/IDENTITY_H BaseFont/EMBEDDED)]
     (.addSubstitutionFont fields base-font)
     (doseq [[field-name field-value-or-map] values
             :when (get (.getFields fields) (name field-name))
