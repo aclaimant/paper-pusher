@@ -71,11 +71,13 @@
             :when (get (.getFields fields) (name field-name))
             :let [{:keys [value color]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
                   field-name (name field-name)
+                  field-info (get-field-info stamper field-name)
                   field-value (str value)
                   color (when color (colors color))]]
-      (if color
-        (show-text stamper field-name field-value color)
-        (.setField fields field-name field-value)))))
+      (cond
+        color (show-text stamper field-name field-value color)
+        (checkbox? field-info) (.setField fields field-name field-value true)
+        :else (.setField fields field-name field-value)))))
 
 (defn ^:private form-fields [pdf-url]
   (with-open [out (ByteArrayOutputStream.)

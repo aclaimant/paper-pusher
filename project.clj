@@ -3,7 +3,7 @@
   :url "https://github.com/aclaimant/paper-pusher"
   :license {:name "AGPL"
             :url "http://www.gnu.org/licenses/agpl-3.0.html"}
-  :dependencies [[com.itextpdf/itextpdf "5.5.9"]
+  :dependencies [[com.itextpdf/itextpdf "5.5.13"]
                  [com.outpace/config "0.9.0"]
                  [compojure "1.5.0"]
                  [fogus/ring-edn "0.3.0"]
@@ -11,7 +11,7 @@
                  [ring "1.2.1"]
                  [org.bouncycastle/bcprov-jdk15on "1.55"]
                  [org.bouncycastle/bcmail-jdk15on "1.55"]]
-  :plugins [[lein-ring "0.9.7"]]
+  :plugins [[lein-ring "0.12.5"]]
 
   :ring {:handler aclaimant.paper-pusher.service/app
          :init aclaimant.paper-pusher.service/main
