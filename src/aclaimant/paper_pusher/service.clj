@@ -7,7 +7,7 @@
     [ring.middleware.keyword-params :as keyword-params]
     [ring.middleware.params :as params])
   (:import
-    [com.itextpdf.text.pdf AcroFields PdfReader PdfStamper PdfContentByte ColumnText PdfString PdfName PdfAnnotation PdfContentByte]
+    [com.itextpdf.text.pdf AcroFields BaseFont PdfReader PdfStamper PdfContentByte ColumnText PdfString PdfName PdfAnnotation PdfContentByte]
     [com.itextpdf.text Paragraph Rectangle Element Phrase BaseColor]
     [java.io ByteArrayOutputStream ByteArrayInputStream]
     [org.apache.commons.io IOUtils]))
@@ -66,7 +66,9 @@
   {:transparent (BaseColor. 1.0 1.0 1.0 0.0)})
 
 (defn ^:private set-fields [stamper values]
-  (let [fields (.getAcroFields stamper)]
+  (let [fields (.getAcroFields stamper)
+        base-font (BaseFont/createFont "resources/DejaVuSans.ttf" BaseFont/IDENTITY_H BaseFont/EMBEDDED)]
+    (.addSubstitutionFont fields base-font)
     (doseq [[field-name field-value-or-map] values
             :when (get (.getFields fields) (name field-name))
             :let [{:keys [value color]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
