@@ -62,6 +62,50 @@
                                 (Phrase. field-title)
                                 (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0)))
 
+(defn ^:private normalize-line [[x y x' y'] [canvas-width canvas-height] [fillable-width fillable-height]]
+  (let [width-ratio (/ fillable-width canvas-width)
+        height-ratio (/ fillable-height canvas-height)
+        aspect-ratio (/ canvas-width canvas-height)
+        [ratio bound-width bound-height] (if (< height-ratio width-ratio)
+                                           [height-ratio (* fillable-height aspect-ratio) fillable-height]
+                                           [width-ratio fillable-width (/ fillable-width aspect-ratio)])]
+    [ratio
+     (* (/ x canvas-width) bound-width)
+     (* (/ y canvas-height) bound-height)
+     (* (/ x' canvas-width) bound-width)
+     (* (/ y' canvas-height) bound-height)]))
+
+(defn ^:private draw-line [cb [line-x line-y line-x' line-y'] [offset-x offset-y max-x max-y] field-rect]
+  (let [dimensions [(- max-x offset-x) (- max-y offset-y)]
+        [ratio x y x' y'] (normalize-line
+                            [(- line-x offset-x) (- line-y offset-y) (- line-x' offset-x) (- line-y' offset-y)]
+                            dimensions
+                            [(.getWidth field-rect) (.getHeight field-rect)]) ]
+    (doto cb
+      (.setLineWidth (* ratio 3.0))
+      (.moveTo (+ x (.getLeft field-rect))
+               (+ (* -1 y) (.getTop field-rect)))
+      (.lineTo (+ x' (.getLeft field-rect))
+               (+ (* -1 y') (.getTop field-rect)))
+      (.stroke))))
+
+(defn ^:private crop-lines [lines]
+  (reduce (fn [[min-x min-y max-x max-y] [x y x' y']]
+            [(min min-x x x')
+             (min min-y y y')
+             (max max-x x x')
+             (max max-y y y')])
+          [Double/POSITIVE_INFINITY Double/POSITIVE_INFINITY 0 0]
+          lines))
+
+(defn ^:private draw-image
+  [stamper field-name {:keys [dimensions lines]}]
+  (let [{:keys [field-rect page] :as field-info} (get-field-info stamper field-name)
+        cb (.getOverContent stamper page)
+        cropped-rect (crop-lines lines)]
+    (doseq [line lines]
+      (draw-line cb line cropped-rect field-rect))))
+
 (def ^:private colors
   {:transparent (BaseColor. 1.0 1.0 1.0 0.0)})
 
@@ -69,12 +113,13 @@
   (let [fields (.getAcroFields stamper)]
     (doseq [[field-name field-value-or-map] values
             :when (get (.getFields fields) (name field-name))
-            :let [{:keys [value color]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
+            :let [{:keys [value color lines]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
                   field-name (name field-name)
                   field-info (get-field-info stamper field-name)
                   field-value (str value)
                   color (when color (colors color))]]
       (cond
+        lines (draw-image stamper field-name field-value-or-map)
         color (show-text stamper field-name field-value color)
         (checkbox? field-info) (.setField fields field-name field-value true)
         :else (.setField fields field-name field-value)))))
