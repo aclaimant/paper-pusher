@@ -62,34 +62,32 @@
                                 (Phrase. field-title)
                                 (+ (.getLeft field-rect) 5) (.getBottom field-rect) 0)))
 
-(defn ^:private normalize-line [[x y x' y'] [canvas-width canvas-height] [fillable-width fillable-height]]
-  (let [width-ratio (/ fillable-width canvas-width)
-        height-ratio (/ fillable-height canvas-height)
-        aspect-ratio (/ canvas-width canvas-height)
-        [ratio bound-width bound-height] (if (< height-ratio width-ratio)
-                                           [height-ratio (* fillable-height aspect-ratio) fillable-height]
-                                           [width-ratio fillable-width (/ fillable-width aspect-ratio)])]
-    [ratio
-     (* (/ x canvas-width) bound-width)
-     (* (/ y canvas-height) bound-height)
-     (* (/ x' canvas-width) bound-width)
-     (* (/ y' canvas-height) bound-height)]))
+(defn ^:private draw-line [cb ratio [x y x' y'] field-rect]
+  (doto cb
+    (.setLineWidth (* ratio 3.0))
+    (.moveTo (+ x (.getLeft field-rect))
+             (+ (* -1 y) (.getTop field-rect)))
+    (.lineTo (+ x' (.getLeft field-rect))
+             (+ (* -1 y') (.getTop field-rect)))
+    (.stroke)))
 
-(defn ^:private draw-line [cb [line-x line-y line-x' line-y'] [offset-x offset-y max-x max-y] field-rect]
-  (let [dimensions [(- max-x offset-x) (- max-y offset-y)]
-        [ratio x y x' y'] (normalize-line
-                            [(- line-x offset-x) (- line-y offset-y) (- line-x' offset-x) (- line-y' offset-y)]
-                            dimensions
-                            [(.getWidth field-rect) (.getHeight field-rect)]) ]
-    (doto cb
-      (.setLineWidth (* ratio 3.0))
-      (.moveTo (+ x (.getLeft field-rect))
-               (+ (* -1 y) (.getTop field-rect)))
-      (.lineTo (+ x' (.getLeft field-rect))
-               (+ (* -1 y') (.getTop field-rect)))
-      (.stroke))))
+(defn ^:private normalize-line [[line-x line-y line-x' line-y'] [offset-x offset-y] [x-ratio y-ratio]]
+  (let [[x y x' y'] [(- line-x offset-x) (- line-y offset-y) (- line-x' offset-x) (- line-y' offset-y)]]
+    [(double (* x x-ratio))
+     (double (* y x-ratio))
+     (double (* x' y-ratio))
+     (double (* y' y-ratio))]))
 
-(defn ^:private crop-lines [lines]
+(defn ^:private determine-ratios [[offset-x offset-y max-x max-y] [fillable-width fillable-height]]
+  (let [[input-width input-height] [(- max-x offset-x) (- max-y offset-y)]
+        width-ratio (/ fillable-width input-width)
+        height-ratio (/ fillable-height input-height)
+        aspect-ratio (/ input-width input-height)]
+    (if (< height-ratio width-ratio)
+      [height-ratio (/ (* fillable-height aspect-ratio) input-width) (/ fillable-height input-height)]
+      [width-ratio (/ fillable-width input-width) (/ (/ fillable-width aspect-ratio) input-height)])))
+
+(defn ^:private bounding-box [lines]
   (reduce (fn [[min-x min-y max-x max-y] [x y x' y']]
             [(min min-x x x')
              (min min-y y y')
@@ -98,13 +96,18 @@
           [Double/POSITIVE_INFINITY Double/POSITIVE_INFINITY 0 0]
           lines))
 
+(defn adjust-lines [lines x y]
+  (let [bounds (bounding-box lines)
+        [ratio x-ratio y-ratio] (determine-ratios bounds [x y])]
+    [ratio (map #(normalize-line % bounds [x-ratio y-ratio]) lines)]))
+
 (defn ^:private draw-image
-  [stamper field-name {:keys [dimensions lines]}]
-  (let [{:keys [field-rect page] :as field-info} (get-field-info stamper field-name)
+  [stamper field-name {:keys [lines]}]
+  (let [{:keys [field-rect page] :as _field-info} (get-field-info stamper field-name)
         cb (.getOverContent stamper page)
-        cropped-rect (crop-lines lines)]
-    (doseq [line lines]
-      (draw-line cb line cropped-rect field-rect))))
+        [ratio adjusted-lines] (adjust-lines lines (.getWidth field-rect) (.getHeight field-rect))]
+    (doseq [line adjusted-lines]
+      (draw-line cb ratio line field-rect))))
 
 (def ^:private colors
   {:transparent (BaseColor. 1.0 1.0 1.0 0.0)})
