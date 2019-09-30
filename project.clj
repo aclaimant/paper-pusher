@@ -11,14 +11,14 @@
                  [ring "1.2.1"]
                  [org.bouncycastle/bcprov-jdk15on "1.55"]
                  [org.bouncycastle/bcmail-jdk15on "1.55"]]
-  :plugins [[lein-ring "0.9.7"]]
+  :plugins [[lein-ring "0.12.5"]]
 
   :ring {:handler aclaimant.paper-pusher.service/app
          :init aclaimant.paper-pusher.service/main
          :nrepl {:start? true :port 7005 :host "0.0.0.0"}}
 
   :uberjar-name "paper-pusher-standalone.jar"
-  :min-lein-version "2.0.0"
+  :min-lein-version "2.7.1"
   :profiles {:dev {:jvm-opts ["-Dconfig.edn=config.edn"]}
              :production {:jvm-opts ["-Dconfig.edn=config.edn"]}
              :uberjar {:aot :all}})
