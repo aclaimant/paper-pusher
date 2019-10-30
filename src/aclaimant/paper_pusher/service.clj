@@ -87,6 +87,9 @@
       [height-ratio (/ (* fillable-height aspect-ratio) input-width) (/ fillable-height input-height)]
       [width-ratio (/ fillable-width input-width) (/ (/ fillable-width aspect-ratio) input-height)])))
 
+(defn ^:private zero-length? [[x1 y1 x2 y2]]
+  (and (= x1 x2) (= y1 y2)))
+
 (defn ^:private bounding-box [lines]
   (reduce (fn [[min-x min-y max-x max-y] [x y x' y']]
             [(min min-x x x')
@@ -94,7 +97,7 @@
              (max max-x x x')
              (max max-y y y')])
           [Double/POSITIVE_INFINITY Double/POSITIVE_INFINITY 0 0]
-          lines))
+          (remove zero-length? lines)))
 
 (defn adjust-lines [lines x y]
   (let [bounds (bounding-box lines)
