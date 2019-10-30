@@ -102,7 +102,9 @@
 (defn adjust-lines [lines x y]
   (let [bounds (bounding-box lines)
         [ratio x-ratio y-ratio] (determine-ratios bounds [x y])]
-    [ratio (map #(normalize-line % bounds [x-ratio y-ratio]) lines)]))
+    [ratio (->> lines
+                (remove zero-length?)
+                (map #(normalize-line % bounds [x-ratio y-ratio])))]))
 
 (defn ^:private draw-image
   [stamper field-name {:keys [lines]}]
