@@ -28,35 +28,36 @@
 (defn ^:private checkbox? [{field-type :type}]
   (= AcroFields/FIELD_TYPE_CHECKBOX field-type))
 
-(defn ^:private get-field-info [stamper field-name]
+(defn ^:private get-field-infos [stamper field-name]
   (let [acro-fields (.getAcroFields stamper)
-        field-position (first (.getFieldPositions acro-fields field-name))
-        field-rect (Rectangle. (.-position field-position))]
-    {:field-rect field-rect
-     :page (.-page field-position)
-     :type (.getFieldType acro-fields field-name)
-     :options (mapv #(.toString %) (.getAppearanceStates acro-fields field-name))}))
+        field-positions (.getFieldPositions acro-fields field-name)]
+    (for [field-position field-positions
+          :let [field-rect (Rectangle. (.-position field-position))]]
+      {:field-rect field-rect
+       :page (.-page field-position)
+       :type (.getFieldType acro-fields field-name)
+       :options (mapv #(.toString %) (.getAppearanceStates acro-fields field-name))})))
 
 (defn ^:private annotate [stamper field-name field-value]
-  (let [{:keys [field-rect options page] :as field-info} (get-field-info stamper field-name)
-        annotation (PdfAnnotation/createText
-                     (.getWriter stamper)
-                     field-rect
-                     field-value
-                     (if (checkbox? field-info)
-                       (format "Name: %s\nValues: %s"
-                               field-name
-                               (string/join ", " options))
-                       field-name)
-                     false
-                     "Help")]
+  (doseq [{:keys [field-rect options page] :as field-info} (get-field-infos stamper field-name)
+          :let [annotation (PdfAnnotation/createText
+                            (.getWriter stamper)
+                            field-rect
+                            field-value
+                            (if (checkbox? field-info)
+                              (format "Name: %s\nValues: %s"
+                                      field-name
+                                      (string/join ", " options))
+                              field-name)
+                            false
+                            "Help")]]
     (.addAnnotation stamper annotation page)))
 
 (defn ^:private show-text
   [stamper field-name field-value color]
-  (let [{:keys [field-rect page] :as field-info} (get-field-info stamper field-name)
-        cb (.getOverContent stamper page)
-        field-title (if (checkbox? field-info) (str "Checkbox: " field-value) field-value)]
+  (doseq [{:keys [field-rect page] :as field-info} (get-field-infos stamper field-name)
+          :let [cb (.getOverContent stamper page)
+                field-title (if (checkbox? field-info) (str "Checkbox: " field-value) field-value)]]
     (.setColorFill cb color)
     (ColumnText/showTextAligned cb Element/ALIGN_LEFT
                                 (Phrase. field-title)
@@ -103,9 +104,9 @@
 
 (defn ^:private draw-image
   [stamper field-name {:keys [lines]}]
-  (let [{:keys [field-rect page] :as _field-info} (get-field-info stamper field-name)
-        cb (.getOverContent stamper page)
-        [ratio adjusted-lines] (adjust-lines lines (.getWidth field-rect) (.getHeight field-rect))]
+  (doseq [{:keys [field-rect page] :as _field-info} (get-field-infos stamper field-name)
+          :let [cb (.getOverContent stamper page)
+                [ratio adjusted-lines] (adjust-lines lines (.getWidth field-rect) (.getHeight field-rect))]]
     (doseq [line adjusted-lines]
       (draw-line cb ratio line field-rect))))
 
@@ -120,7 +121,7 @@
             :when (get (.getFields fields) (name field-name))
             :let [{:keys [value color lines]} (if (map? field-value-or-map) field-value-or-map {:value field-value-or-map})
                   field-name (name field-name)
-                  field-info (get-field-info stamper field-name)
+                  field-info (first (get-field-infos stamper field-name))
                   field-value (str value)
                   color (when color (colors color))]]
       (cond
