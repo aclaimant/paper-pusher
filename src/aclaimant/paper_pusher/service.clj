@@ -168,17 +168,25 @@
     (str pdf-url "?key=" request-key)
     pdf-url))
 
+(defn log-request
+  "Logs the pdf url and an optional request-id."
+  [route {:keys [pdf-url request-id]}]
+  (println (format "[%s] %s: %s" (or request-id "") route pdf-url)))
+
 (defroutes protected-routes
   (POST "/paper-pusher/push" {params :params}
+    (log-request "push" params)
     {:status 200
      :headers {"Content-Type" "application/pdf"}
      :body (with-field-values (pdf-url params) (:values params))})
   (POST "/paper-pusher/preview" {params :params}
+    (log-request "preview" params)
     (let [pdf-url (pdf-url params)]
       {:status 200
        :headers {"Content-Type" "application/pdf"}
        :body (preview-fields pdf-url)}))
   (POST "/paper-pusher/form-fields" {params :params}
+    (log-request "form-fields" params)
     (let [pdf-url (pdf-url params)]
       {:status 200
        :headers {"Content-Type" "application/edn"}
