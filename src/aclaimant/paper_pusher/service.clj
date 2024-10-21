@@ -9,6 +9,7 @@
   (:import
     [com.itextpdf.text.pdf AcroFields BaseFont PdfReader PdfStamper PdfContentByte ColumnText PdfString PdfName PdfAnnotation PdfContentByte]
     [com.itextpdf.text Paragraph Rectangle Element Phrase BaseColor]
+    [com.itextpdf.text.exceptions InvalidPdfException]
     [java.io ByteArrayOutputStream ByteArrayInputStream]
     [org.apache.commons.io IOUtils]))
 
@@ -250,6 +251,11 @@
   (fn [e]
     (try
       (handler e)
+      (catch InvalidPdfException ex
+        (println "An error has occurred" (.getMessage ex))
+        (.printStackTrace ex)
+        {:status 415
+         :body "Unsupported PDF format. Perhaps it is encrypted or corrupted."})
       (catch Throwable ex
         (println "An error has occurred" (.getMessage ex))
         (.printStackTrace ex)
